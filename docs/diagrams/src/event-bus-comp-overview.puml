@@ -1,0 +1,43 @@
+@startuml event-bus-comp-overview
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Component Overview for In-Memory Event Bus
+title In-Memory Event Bus - Component Overview
+
+Container_Boundary(app, "Monolith Application") {
+    Component(eventBus, "EventBus", "TypeScript", "In-memory event communication hub")
+    Component(validator, "EventValidator", "TypeScript", "JSON schema validation")
+    Component(logger, "EventLogger", "TypeScript", "Metrics and logging")
+
+    Container_Boundary(services, "Application Services") {
+        Component(userService, "UserService", "TypeScript", "User management")
+        Component(orderService, "OrderService", "TypeScript", "Order processing")
+        Component(notificationService, "NotificationService", "TypeScript", "Notifications")
+        Component(auditService, "AuditService", "TypeScript", "Audit logging")
+    }
+}
+
+Container_Boundary(external, "External Systems") {
+    ComponentDb(jsonSchemas, "JSON Schemas", "JSON", "Event contracts")
+    Component(console, "Console/Logger", "System", "Log output")
+}
+
+' Internal relationships
+Rel(eventBus, validator, "validates events", "JSON Schema")
+Rel(eventBus, logger, "logs operations", "metrics, errors")
+Rel(validator, jsonSchemas, "loads schemas", "JSON")
+Rel(logger, console, "outputs logs", "console.log")
+
+' Service relationships with EventBus
+Rel(userService, eventBus, "publishes/subscribes", "User.*")
+Rel(orderService, eventBus, "publishes/subscribes", "Order.*, Payment.*")
+Rel(notificationService, eventBus, "subscribes", "Order.*, User.*")
+Rel(auditService, eventBus, "subscribes", "*")
+
+' Data flow annotations
+Lay_D(eventBus, services)
+Lay_R(eventBus, validator)
+Lay_R(validator, logger)
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,76 @@
+@startuml event-bus-validation-sequence
+!theme plain
+title Event Validation Sequence
+
+participant "Publisher" as P
+participant "EventBus" as EB
+participant "EventValidator" as EV
+participant "Schema Registry" as SR
+participant "EventLogger" as EL
+
+== Schema Registration (Initialization) ==
+
+EB -> EV: initialize()
+EV -> SR: loadBaseEventSchema()
+note right of SR: Load base schema:\n- eventId (UUID)\n- eventType (Context.Event)\n- timestamp (ISO 8601)\n- source, version, data
+
+SR --> EV: schema loaded
+EV -> EL: info("Schema registry initialized")
+
+== Event Validation Flow ==
+
+P -> EB: publish(partialEvent)
+note right of P: Partial event:\n{\n  eventType: "User.AccountCreated",\n  source: "UserService",\n  data: {...}\n}
+
+EB -> EB: enrichEvent(partialEvent)
+note right of EB: Add missing fields:\n- eventId: generateUUID()\n- timestamp: new Date().toISOString()\n- version: "1.0"\n- metadata: {}
+
+EB -> EV: validate(enrichedEvent)
+
+EV -> SR: getSchema(eventType)
+alt Schema Found
+    SR --> EV: eventSchema
+
+    EV -> EV: validateAgainstSchema(event, schema)
+
+    alt Validation Success
+        EV -> EL: debug("Event validation passed", context)
+        EV --> EB: validation success
+
+    else Validation Failed
+        EV -> EV: buildValidationError(errors)
+        EV -> EL: warn("Event validation failed", errors)
+        EV --> EB: ValidationError
+        EB -> EL: error("Cannot publish invalid event", error)
+        EB --> P: throw ValidationError
+    end
+
+else Schema Not Found
+    SR --> EV: schema not found
+    EV -> EL: warn("No schema found for event type", eventType)
+    EV -> EV: useBaseSchema()
+    note right of EV: Fall back to base\nevent schema validation
+
+    EV -> EV: validateAgainstBaseSchema(event)
+    alt Base Validation Success
+        EV -> EL: info("Event validated against base schema")
+        EV --> EB: validation success
+    else Base Validation Failed
+        EV --> EB: ValidationError
+        EB --> P: throw ValidationError
+    end
+end
+
+== Custom Schema Registration (Optional) ==
+
+note over EV: For specific event types...
+
+P -> EB: registerEventSchema(eventType, customSchema)
+EB -> EV: addSchema(eventType, schema)
+EV -> SR: storeSchema(eventType, schema)
+SR --> EV: schema stored
+EV -> EL: info("Custom schema registered", eventType)
+EV --> EB: registration success
+EB --> P: success
+
+@enduml

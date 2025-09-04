@@ -1,0 +1,77 @@
+@startuml event-bus-publish-sequence
+!theme plain
+title Event Publishing Sequence
+
+participant "Publisher" as P
+participant "EventBus" as EB
+participant "EventValidator" as EV
+participant "EventLogger" as EL
+participant "Subscription Registry" as SR
+participant "Handler A" as HA
+participant "Handler B" as HB
+
+== Event Publishing Flow ==
+
+P -> EB: publish(event)
+note right of P: Event contains:\n- eventType: "User.AccountCreated"\n- source: "UserService"\n- data: {...}
+
+EB -> EB: enrichEvent(event)
+note right of EB: Add missing fields:\n- eventId (UUID)\n- timestamp\n- version\n- metadata
+
+EB -> EV: validate(enrichedEvent)
+EV -> EV: checkSchema(event)
+alt Validation Success
+    EV --> EB: validation passed
+else Validation Failed
+    EV --> EB: ValidationError
+    EB -> EL: warn("Validation failed", error)
+    EB --> P: throw ValidationError
+end
+
+== Event Distribution ==
+
+EB -> SR: findMatchingSubscriptions(eventType)
+SR --> EB: List<Subscription>
+
+EB -> EL: info("Publishing event", context)
+
+loop For each matching subscription
+    EB -> EB: executeHandler(event, subscription)
+
+    alt Handler A
+        EB -> HA: handle(event, context)
+        alt Handler Success
+            HA --> EB: Promise<void>
+        else Handler Error
+            HA --> EB: Error
+            EB -> EL: error("Handler failed", error)
+            alt Retry Available
+                EB -> EB: scheduleRetry(event, subscription)
+                note right of EB: Wait retryDelay ms
+                EB -> HA: handle(event, context) [retry]
+                alt Retry Success
+                    HA --> EB: Promise<void>
+                else Retry Failed
+                    HA --> EB: Error
+                    EB -> EL: error("Handler retry failed", error)
+                end
+            end
+        end
+    end
+
+    alt Handler B (Independent)
+        EB -> HB: handle(event, context)
+        HB --> EB: Promise<void>
+        note right of HB: Handler B succeeds\neven if Handler A fails
+    end
+end
+
+== Result Compilation ==
+
+EB -> EB: compilePublishResult()
+note right of EB: Result includes:\n- eventId\n- success status\n- subscribersNotified\n- failedHandlers\n- totalRetries
+
+EB -> EL: info("Event published", result)
+EB --> P: PublishResult
+
+@enduml

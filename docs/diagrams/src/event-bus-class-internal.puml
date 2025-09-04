@@ -1,0 +1,164 @@
+@startuml event-bus-class-internal
+
+!theme plain
+skinparam backgroundColor white
+skinparam linetype ortho
+skinparam noteBackgroundColor lightyellow
+
+' Event Bus Core Classes
+class EventBus <<Primary Component>> {
+  - subscriptions: Map<string, EventHandler[]>
+  - validator: EventValidator
+  - logger: LoggerPlugin
+  - config: EventBusConfig
+  --
+  + publish<T>(event: T): Promise<PublishResult>
+  + subscribe<T>(pattern: string, handler: EventHandler<T>): Promise<Subscription>
+  + unsubscribe(subscription: Subscription): Promise<boolean>
+  - matchPattern(eventType: string, pattern: string): boolean
+  - executeHandlers(event: BasicEvent, handlers: EventHandler[]): Promise<void>
+  - retryHandler(event: BasicEvent, handler: EventHandler, attempt: number): Promise<void>
+}
+
+class EventValidator <<Validation>> {
+  - schemaRegistry: Map<string, JSONSchema>
+  - ajv: Ajv
+  --
+  + validateEvent(event: BasicEvent): ValidationResult
+  + registerSchema(eventType: string, schema: JSONSchema): void
+  + getSchema(eventType: string): JSONSchema | undefined
+  - validateSchema(event: any, schema: JSONSchema): boolean
+}
+
+' Interfaces and Types
+interface LoggerPlugin <<Plugin Interface>> {
+  + info(message: string, context?: Record<string, any>): Promise<void>
+  + warn(message: string, context?: Record<string, any>): Promise<void>
+  + error(message: string, error?: Error, context?: Record<string, any>): Promise<void>
+  + fatal(message: string, error?: Error, context?: Record<string, any>): Promise<void>
+  + debug(message: string, context?: Record<string, any>): Promise<void>
+}
+
+class ConsoleLogger <<Built-in Implementation>> {
+  + info(message: string, context?: Record<string, any>): Promise<void>
+  + warn(message: string, context?: Record<string, any>): Promise<void>
+  + error(message: string, error?: Error, context?: Record<string, any>): Promise<void>
+  + fatal(message: string, error?: Error, context?: Record<string, any>): Promise<void>
+  + debug(message: string, context?: Record<string, any>): Promise<void>
+}
+
+' Data Types and Structures
+class BasicEvent <<Data Type>> {
+  + eventId: string
+  + eventType: string
+  + timestamp: string
+  + source: string
+  + version: string
+  + data: object
+  + correlationId?: string
+  + metadata?: EventMetadata
+}
+
+class EventMetadata <<Data Type>> {
+  + retryCount?: number
+  + priority?: "low" | "normal" | "high" | "critical"
+  + tags?: string[]
+}
+
+class Subscription <<Data Type>> {
+  + id: string
+  + pattern: string
+}
+
+class PublishResult <<Data Type>> {
+  + eventId: string
+  + success: boolean
+  + publishedAt: Date
+  + subscribersNotified: number
+  + failedHandlers?: string[]
+  + totalRetries?: number
+}
+
+class EventContext <<Data Type>> {
+  + subscription: Subscription
+  + attempt: number
+}
+
+class EventError <<Data Type>> {
+  + eventId: string
+  + eventType: string
+  + subscriptionId: string
+  + error: Error
+  + attempt: number
+  + timestamp: Date
+}
+
+class EventBusConfig <<Configuration>> {
+  + maxRetries?: number
+  + retryDelay?: number
+  + enableLogging?: boolean
+  + enableMetrics?: boolean
+  + logger?: LoggerPlugin
+}
+
+class EventMetrics <<Metrics>> {
+  + eventsPublished: number
+  + eventsProcessed: number
+  + handlerFailures: number
+  + totalRetries: number
+  + averageProcessingTime: number
+}
+
+' Type Aliases
+note top of EventBus : EventHandler<T> = (event: T, context: EventContext) => Promise<void>
+note top of EventValidator : ValidationResult = { valid: boolean, errors?: string[] }
+note top of EventValidator : JSONSchema = Ajv schema object
+
+' Relationships
+EventBus ||--|| EventValidator : uses
+EventBus ||--|| LoggerPlugin : uses
+EventBus --> EventBusConfig : configured by
+EventBus ..> BasicEvent : publishes
+EventBus ..> Subscription : manages
+EventBus ..> PublishResult : returns
+EventBus ..> EventContext : provides to handlers
+
+ConsoleLogger ..|> LoggerPlugin : implements
+
+BasicEvent ||--o EventMetadata : contains
+
+EventContext ||--|| Subscription : contains
+
+' Data Flow Notes
+note right of EventBus
+  **Publishing Flow:**
+  1. Validate event with EventValidator
+  2. Find matching subscribers by pattern
+  3. Execute handlers with retry logic
+  4. Log results with LoggerPlugin
+  5. Return PublishResult
+end note
+
+note left of EventBus
+  **Subscription Flow:**
+  1. Register pattern and handler
+  2. Store in subscriptions Map
+  3. Log subscription with LoggerPlugin
+  4. Return Subscription handle
+end note
+
+note bottom of EventValidator
+  **Validation Strategy:**
+  - JSON Schema validation with Ajv
+  - Schema registry for event types
+  - Fail-fast validation before publishing
+end note
+
+note bottom of LoggerPlugin
+  **Logging Strategy:**
+  - Pluggable logging for different environments
+  - ConsoleLogger provides built-in implementation
+  - EventBus uses logger directly for observability
+end note
+
+@enduml

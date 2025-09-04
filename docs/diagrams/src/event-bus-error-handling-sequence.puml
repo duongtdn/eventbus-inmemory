@@ -1,0 +1,65 @@
+@startuml event-bus-error-handling-sequence
+!theme plain
+title Error Handling & Retry Sequence
+
+participant "EventBus" as EB
+participant "EventLogger" as EL
+participant "Handler A" as HA
+participant "Handler B" as HB
+participant "Retry Scheduler" as RS
+
+== Handler Error with Retry ==
+
+EB -> HA: handle(event, context)
+note right of HA: attempt = 1
+
+HA --> EB: Error("Processing failed")
+
+EB -> EL: error("Handler execution failed", error, context)
+note right of EL: Log error details:\n- eventId\n- subscriptionId\n- attempt number\n- error message
+
+alt Has Retries Remaining
+    EB -> RS: scheduleRetry(event, subscription, attempt+1)
+    note right of RS: Wait retryDelay ms\n(exponential backoff)
+
+    RS -> EB: executeRetry()
+    EB -> HA: handle(event, context)
+    note right of HA: attempt = 2
+
+    alt Retry Success
+        HA --> EB: Promise<void>
+        EB -> EL: info("Handler retry succeeded", context)
+    else Retry Failed Again
+        HA --> EB: Error("Still failing")
+        EB -> EL: error("Handler retry failed", error, context)
+
+        alt More Retries Available
+            EB -> RS: scheduleRetry(event, subscription, attempt+1)
+            note right of RS: Continue retry cycle
+        else Max Retries Exceeded
+            EB -> EL: warn("Handler failed after max retries", context)
+            EB -> EB: markHandlerAsFailed(subscriptionId)
+            note right of EB: Add to failedHandlers\nin PublishResult
+        end
+    end
+else No Retries Configured
+    EB -> EL: warn("Handler failed, no retries", context)
+    EB -> EB: markHandlerAsFailed(subscriptionId)
+end
+
+== Error Isolation Between Handlers ==
+
+note over EB: Handler A failed, but Handler B should still execute
+
+EB -> HB: handle(event, context)
+note right of HB: Independent execution\nfrom Handler A
+
+HB --> EB: Promise<void>
+EB -> EL: info("Handler B executed successfully")
+
+== Final Result Compilation ==
+
+EB -> EB: compilePublishResult()
+note right of EB: PublishResult includes:\n- success: false (partial)\n- subscribersNotified: 2\n- failedHandlers: ["subscription-A-id"]\n- totalRetries: 2
+
+@enduml

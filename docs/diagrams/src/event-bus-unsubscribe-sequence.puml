@@ -1,0 +1,63 @@
+@startuml event-bus-unsubscribe-sequence
+!theme plain
+title Event Unsubscription Sequence
+
+participant "Subscriber" as S
+participant "EventBus" as EB
+participant "Subscription Registry" as SR
+participant "EventLogger" as EL
+
+== Unsubscription Flow ==
+
+S -> EB: unsubscribe(subscription)
+note right of S: subscription = {\n  id: "sub-123",\n  pattern: "User.*"\n}
+
+EB -> EB: validateSubscription(subscription)
+alt Valid Subscription
+    EB -> SR: removeSubscription(subscription.id)
+
+    SR -> SR: findSubscriptionById(id)
+    alt Subscription Found
+        SR -> SR: removeFromPatternMap(pattern, subscriptionId)
+        note right of SR: Remove from\nMap<pattern, handlers[]>
+
+        SR -> SR: cleanupEmptyPatterns()
+        note right of SR: Remove pattern entry\nif no more handlers
+
+        SR --> EB: subscription removed
+
+        EB -> EL: info("Subscription removed", context)
+        note right of EL: Log removal:\n- subscriptionId\n- pattern\n- timestamp
+
+        EB --> S: true (success)
+
+    else Subscription Not Found
+        SR --> EB: subscription not found
+        EB -> EL: warn("Attempted to remove non-existent subscription", context)
+        EB --> S: false (not found)
+    end
+
+else Invalid Subscription
+    EB -> EL: warn("Invalid subscription format", context)
+    EB --> S: false (invalid)
+end
+
+== Cleanup Verification ==
+
+note over SR: Registry state after removal
+
+SR -> SR: validateRegistryIntegrity()
+note right of SR: Ensure:\n- No orphaned handlers\n- Clean pattern mappings\n- Consistent state
+
+== Subsequent Event Publishing ==
+
+note over EB: When next event is published...
+
+EB -> SR: findMatchingSubscriptions("User.AccountCreated")
+SR -> SR: lookupPattern("User.*")
+note right of SR: Previously unsubscribed\nhandler won't be found
+
+SR --> EB: List<remaining subscriptions>
+note right of SR: Only active subscriptions\nare returned
+
+@enduml

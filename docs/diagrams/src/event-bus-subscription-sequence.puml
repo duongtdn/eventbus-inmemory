@@ -1,0 +1,55 @@
+@startuml event-bus-subscription-sequence
+!theme plain
+title Event Subscription Sequence
+
+participant "Subscriber" as S
+participant "EventBus" as EB
+participant "Subscription Registry" as SR
+participant "EventLogger" as EL
+participant "EventValidator" as EV
+
+== Subscription Registration ==
+
+S -> EB: subscribe(pattern, handler)
+note right of S: Pattern examples:\n- "User.AccountCreated" (exact)\n- "User.*" (prefix)\n- "*" (all events)
+
+EB -> EB: generateSubscriptionId()
+note right of EB: Create unique ID\nfor this subscription
+
+EB -> EB: validatePattern(pattern)
+alt Valid Pattern
+    EB -> SR: addSubscription(subscriptionId, pattern, handler)
+    SR -> SR: storeInPatternMap(pattern, subscription)
+    note right of SR: Map<pattern, handlers[]>\nfor efficient lookup
+
+    SR --> EB: subscription stored
+
+    EB -> EL: info("Subscription created", context)
+    note right of EL: Log subscription details:\n- subscriptionId\n- pattern\n- timestamp
+
+    EB -> EB: createSubscriptionHandle()
+    EB --> S: Subscription {id, pattern}
+
+else Invalid Pattern
+    EB --> S: throw PatternError
+end
+
+== Multiple Subscriptions (Optional) ==
+
+S -> EB: subscribe("Order.*", anotherHandler)
+EB -> SR: addSubscription(newId, "Order.*", anotherHandler)
+SR --> EB: stored
+EB -> EL: info("Additional subscription created")
+EB --> S: Subscription {id, pattern}
+
+== Subscription Lookup During Publish ==
+
+note over SR: When event is published later...
+
+EB -> SR: findMatchingSubscriptions("User.AccountCreated")
+SR -> SR: checkExactMatch("User.AccountCreated")
+SR -> SR: checkPrefixMatch("User.*")
+SR -> SR: checkGlobalMatch("*")
+SR --> EB: List<matching subscriptions>
+
+@enduml
