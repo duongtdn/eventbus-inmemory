@@ -6,3 +6,9 @@
 
 // Export all types
 export * from './types'
+
+// Export validator components
+export * from './validator/event-validator'
+
+// Export schemas
+export * from './schemas'
