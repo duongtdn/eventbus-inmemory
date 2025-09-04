@@ -22,3 +22,6 @@ export * from './config';
 
 // Validation types
 export * from './validation';
+
+// Logger types
+export type { LoggerPlugin } from '../logger';

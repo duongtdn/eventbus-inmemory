@@ -12,3 +12,6 @@ export * from './validator/event-validator'
 
 // Export schemas
 export * from './schemas'
+
+// Export logger components
+export * from './logger'
