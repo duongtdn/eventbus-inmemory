@@ -5,3 +5,4 @@
  */
 
 export * from './event-bus';
+export * from './pattern-matcher';

@@ -291,6 +291,7 @@ interface EventContext {
 **Pattern Examples:**
 ```typescript
 // Exact event type matching
+await eventBus.subscribe("Initialization", handler)
 await eventBus.subscribe("User.AccountCreated", handler)
 
 // Prefix matching (wildcard)
@@ -309,7 +310,6 @@ await eventBus.subscribe("Order.Completed", handler)
 ### 4.3 Configuration
 
 ```typescript
-```typescript
 interface EventBusConfig {
   /** Maximum retry attempts for failed handlers (default: 0) */
   maxRetries?: number
@@ -323,8 +323,6 @@ interface EventBusConfig {
   /** Logger plugin for environment-specific logging */
   logger?: LoggerPlugin
 }
-```
-
 ```
 
 ### 4.4 Logger Plugin Interface
