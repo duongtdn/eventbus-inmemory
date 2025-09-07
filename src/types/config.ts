@@ -4,6 +4,8 @@
  * Configuration interfaces for the event bus and related components.
  */
 
+import { LoggerPlugin } from '../logger';
+
 /**
  * Event bus configuration
  */
@@ -11,7 +13,8 @@ export interface EventBusConfig {
   maxRetries?: number;
   retryDelay?: number;
   enableLogging?: boolean;
-  [key: string]: any;
+  logger?: LoggerPlugin;
+  validator?: any; // Allow any validator implementation for testing flexibility
 }
 
 /**

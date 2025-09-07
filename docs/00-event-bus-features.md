@@ -48,16 +48,14 @@ The Event Bus is a lightweight, in-memory event communication component that pro
 
 ### 5. Observability & Monitoring
 - **Structured Logging**: Comprehensive logging of all event operations through pluggable interface
-- **Basic Metrics Collection**: Tracks event counts, error rates, and retry statistics
 - **Event Tracing**: Correlation ID support for tracing related events
 - **Debug Information**: Detailed debugging information for development
 - **Failed Handler Tracking**: Identifies and reports handlers that fail after all retries
-- **Performance Metrics**: Tracks subscribers notified and total retry attempts
 
 ### 6. Configuration & Flexibility
 - **Configurable Retry Policy**: Customizable maximum retry attempts and retry delays
 - **Pluggable Logging**: Environment-specific logging through LoggerPlugin interface
-- **Optional Features**: Enable/disable logging and metrics collection
+- **Optional Features**: Enable/disable logging
 - **Development Support**: Built-in ConsoleLogger for development environments
 - **Runtime Configuration**: Configure behavior without code changes
 
@@ -114,7 +112,6 @@ The Event Bus is a lightweight, in-memory event communication component that pro
 
 ### 14. Production Features
 - **Error Recovery**: Automatic recovery from transient failures
-- **Monitoring Integration**: Metrics suitable for monitoring systems
 - **Production Logging**: Support for cloud-based logging services
 - **Resource Management**: Efficient memory and CPU usage
 - **Reliability**: Consistent behavior under load and error conditions

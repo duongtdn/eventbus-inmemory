@@ -25,7 +25,7 @@ Enable asynchronous, decoupled communication between application components with
 - **Event Subscription**: Pattern-based subscriptions with wildcard support
 - **Contract Validation**: JSON schema validation for type safety
 - **Error Handling**: Handler error management with retry
-- **Observability**: Basic metrics and structured logging
+- **Observability**: Basic structured logging
 
 ### 1.2 Key Features
 
@@ -67,10 +67,9 @@ Enable asynchronous, decoupled communication between application components with
 - **Rationale**: Dedicated validation ensures type safety and contract compliance
 
 **EventLogger:**
-- **Primary Responsibility**: Observability and metrics through pluggable interface
+- **Primary Responsibility**: Observability through pluggable interface
 - **Key Functions**:
   - Logs all event operations (publish, subscribe, errors) via plugin
-  - Collects basic metrics (event counts, error rates)
   - Provides debugging information
 - **Dependencies**: LoggerPlugin interface implementation
 - **Rationale**: Clean separation of observability concerns with environment-specific logging
@@ -89,7 +88,7 @@ External Subscriber → EventBus.subscribe() → Pattern Registry → EventLogge
 
 **Key Relationships:**
 - **EventBus** → **EventValidator**: Validates events before publishing
-- **EventBus** → **EventLogger**: Logs all operations and metrics
+- **EventBus** → **EventLogger**: Logs all operations
 - **EventBus** → **Internal Maps**: Stores subscriptions and patterns
 
 **Dependency Structure:**
@@ -310,6 +309,7 @@ await eventBus.subscribe("Order.Completed", handler)
 ### 4.3 Configuration
 
 ```typescript
+```typescript
 interface EventBusConfig {
   /** Maximum retry attempts for failed handlers (default: 0) */
   maxRetries?: number
@@ -320,12 +320,10 @@ interface EventBusConfig {
   /** Enable detailed logging (default: true) */
   enableLogging?: boolean
 
-  /** Enable metrics collection (default: true) */
-  enableMetrics?: boolean
-
   /** Logger plugin for environment-specific logging */
   logger?: LoggerPlugin
 }
+```
 
 ```
 
