@@ -10,6 +10,7 @@ import { EventHandler, EventContext } from '../types/handlers';
 import { BasicEvent } from '../types/events';
 import { LoggerPlugin, ConsoleLogger } from '../logger';
 import { EventValidator } from '../validator';
+import { PatternMatcher } from './pattern-matcher';
 
 // Configuration constants
 const DEFAULT_CONFIG = {
@@ -53,6 +54,7 @@ export class EventBus {
   private readonly config: InternalEventBusConfig;
   private readonly subscriptions: Map<string, Subscription[]> = new Map();
   private subscriptionCounter = 0;
+  private readonly patternMatcher = new PatternMatcher();
 
   constructor(userConfig?: EventBusConfig) {
     try {
@@ -212,6 +214,11 @@ export class EventBus {
 
     if (!handler || typeof handler !== 'function') {
       throw new Error('Handler must be a function');
+    }
+
+    // Use PatternMatcher to validate pattern syntax
+    if (!this.patternMatcher.isValidPattern(pattern)) {
+      throw new Error(`Invalid pattern: ${pattern}`);
     }
   }
 
