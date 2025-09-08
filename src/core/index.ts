@@ -6,3 +6,6 @@
 
 export * from './event-bus';
 export * from './pattern-matcher';
+export * from './event-enrichment-service';
+export * from './subscriber-notification-service';
+export * from './subscription-registry';

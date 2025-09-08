@@ -18,8 +18,10 @@
   },
   "homepage": "https://github.com/codehola/eventbus#readme",
   "dependencies": {
+    "@types/uuid": "^10.0.0",
     "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1"
+    "ajv-formats": "^3.0.1",
+    "uuid": "^12.0.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

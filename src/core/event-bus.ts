@@ -5,12 +5,16 @@
  */
 
 import { EventBusConfig } from '../types/config';
-import { Subscription, SubscriptionConfig } from '../types/subscriptions';
-import { EventHandler, EventContext } from '../types/handlers';
+import { Subscription } from '../types/subscriptions';
+import { EventHandler } from '../types/handlers';
 import { BasicEvent } from '../types/events';
+import { PublishConfig, PublishResult } from '../types/results';
 import { LoggerPlugin, ConsoleLogger } from '../logger';
 import { EventValidator } from '../validator';
 import { PatternMatcher } from './pattern-matcher';
+import { EventEnrichmentService } from './event-enrichment-service';
+import { SubscriberNotificationService } from './subscriber-notification-service';
+import { SubscriptionRegistry } from './subscription-registry';
 
 // Configuration constants
 const DEFAULT_CONFIG = {
@@ -52,13 +56,21 @@ interface InternalEventBusConfig {
  */
 export class EventBus {
   private readonly config: InternalEventBusConfig;
-  private readonly subscriptions: Map<string, Subscription[]> = new Map();
+  private readonly subscriptionRegistry = new SubscriptionRegistry();
   private subscriptionCounter = 0;
   private readonly patternMatcher = new PatternMatcher();
+  private readonly enrichmentService = new EventEnrichmentService();
+  private readonly notificationService: SubscriberNotificationService;
 
   constructor(userConfig?: EventBusConfig) {
     try {
       this.config = this.buildConfiguration(userConfig);
+      this.notificationService = new SubscriberNotificationService({
+        maxRetries: this.config.maxRetries,
+        retryDelay: this.config.retryDelay,
+        logger: this.config.logger,
+        enableLogging: this.config.enableLogging
+      });
     } catch (error) {
       throw this.wrapInitializationError(error);
     }
@@ -74,9 +86,28 @@ export class EventBus {
     this.validateSubscriptionInput(pattern, handler);
 
     const subscription = this.createSubscription(pattern, handler);
-    this.storeSubscription(subscription);
+    this.subscriptionRegistry.add(subscription);
 
     return subscription;
+  }
+
+  /**
+   * Publish an event to all matching subscribers
+   * @param event - The domain event to publish
+   * @param config - Optional publish configuration including timeout
+   * @returns Promise resolving to publish result after all subscribe handler has been done or resolved
+   * @throws TimeoutError if handlers don't complete within specified timeout
+   */
+  async publish<T extends BasicEvent>(event: Partial<T>, config?: PublishConfig): Promise<PublishResult> {
+    const enrichedEvent = this.enrichmentService.enrich(event);
+
+    await this.validateEvent(enrichedEvent);
+
+    const matchingSubscriptions = this.subscriptionRegistry.findMatching(enrichedEvent.eventType);
+
+    const result = await this.notificationService.notify(enrichedEvent, matchingSubscriptions, config);
+
+    return result;
   }
 
   /**
@@ -85,32 +116,21 @@ export class EventBus {
    * @returns Promise resolving to success status
    */
   async unsubscribe(subscription: Subscription): Promise<boolean> {
-    const subscriptionsForPattern = this.subscriptions.get(subscription.pattern);
-    if (!subscriptionsForPattern) {
-      return false;
-    }
-
-    const removed = this.removeSubscriptionFromPattern(subscriptionsForPattern, subscription.id);
-    if (removed && subscriptionsForPattern.length === 0) {
-      this.subscriptions.delete(subscription.pattern);
-    }
-
-    return removed;
+    return this.subscriptionRegistry.remove(subscription);
   }
 
   /**
    * Get total number of active subscriptions
    */
   getSubscriptionCount(): number {
-    return Array.from(this.subscriptions.values())
-      .reduce((total, subscriptions) => total + subscriptions.length, 0);
+    return this.subscriptionRegistry.getTotalCount();
   }
 
   /**
    * Check if any subscriptions exist
    */
   hasSubscriptions(): boolean {
-    return this.subscriptions.size > 0;
+    return this.subscriptionRegistry.hasSubscriptions();
   }
 
   /**
@@ -242,29 +262,6 @@ export class EventBus {
   }
 
   /**
-   * Store subscription in the registry
-   */
-  private storeSubscription(subscription: Subscription): void {
-    const pattern = subscription.pattern;
-    if (!this.subscriptions.has(pattern)) {
-      this.subscriptions.set(pattern, []);
-    }
-    this.subscriptions.get(pattern)!.push(subscription);
-  }
-
-  /**
-   * Remove a subscription from a pattern's subscription list
-   */
-  private removeSubscriptionFromPattern(subscriptions: Subscription[], subscriptionId: string): boolean {
-    const index = subscriptions.findIndex(sub => sub.id === subscriptionId);
-    if (index === -1) {
-      return false;
-    }
-    subscriptions.splice(index, 1);
-    return true;
-  }
-
-  /**
    * Wrap initialization errors with context
    */
   private wrapInitializationError(error: unknown): Error {
@@ -272,5 +269,21 @@ export class EventBus {
       return new Error(`Failed to initialize EventBus: ${error.message}`);
     }
     return new Error('Failed to initialize EventBus: Unknown error occurred');
+  }
+
+  /**
+   * Validate event using the configured validator
+   */
+  private async validateEvent(event: BasicEvent): Promise<void> {
+    try {
+      if (this.config.validator && this.config.validator.validate) {
+        await this.config.validator.validate(event);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Event validation failed');
+    }
   }
 }

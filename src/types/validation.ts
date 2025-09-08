@@ -38,3 +38,18 @@ export interface SchemaRegistryEntry {
   version: string;
   registeredAt: Date;
 }
+
+/**
+ * Error thrown when publish operation times out
+ */
+export class TimeoutError extends Error {
+  constructor(
+    public eventId: string,
+    public timeoutMs: number,
+    public completedHandlers: number,
+    public totalHandlers: number
+  ) {
+    super(`Event ${eventId} timed out after ${timeoutMs}ms. ${completedHandlers}/${totalHandlers} handlers completed.`)
+    this.name = 'TimeoutError'
+  }
+}
