@@ -4,7 +4,8 @@
   "description": "In-memory event bus with JSON contracts",
   "main": "dist/index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc && tsc-alias",
     "test": "jest"
   },
   "repository": {
