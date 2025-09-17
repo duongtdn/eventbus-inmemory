@@ -1,4 +1,4 @@
-# @codehola/eventbus
+# eventbus-inmemory
 
 A robust, type-safe, in-memory event bus for Node.js and Web applications with pattern matching, automatic retries, and comprehensive error handling.
 
@@ -17,13 +17,13 @@ A robust, type-safe, in-memory event bus for Node.js and Web applications with p
 ## Installation
 
 ```bash
-npm install @codehola/eventbus
+npm install eventbus-inmemory
 ```
 
 ## Quick Start
 
 ```typescript
-import { EventBus } from '@codehola/eventbus';
+import { EventBus } from 'eventbus-inmemory';
 
 // Create an EventBus instance
 const eventBus = new EventBus();
@@ -90,7 +90,7 @@ interface EventContext {
 Create an EventBus with custom configuration:
 
 ```typescript
-import { EventBus, ConsoleLogger } from '@codehola/eventbus';
+import { EventBus, ConsoleLogger } from 'eventbus-inmemory';
 
 const eventBus = new EventBus({
   maxRetries: 3,          // Max retry attempts (default: 0)
@@ -106,7 +106,7 @@ const eventBus = new EventBus({
 ### Basic Usage
 
 ```typescript
-import { EventBus } from '@codehola/eventbus';
+import { EventBus } from 'eventbus-inmemory';
 
 const eventBus = new EventBus();
 
@@ -139,7 +139,7 @@ await eventBus.unsubscribe(subscription);
 ### Advanced Configuration
 
 ```typescript
-import { EventBus, LoggerPlugin } from '@codehola/eventbus';
+import { EventBus, LoggerPlugin } from 'eventbus-inmemory';
 
 // Custom logger implementation
 class CustomLogger implements LoggerPlugin {
@@ -248,7 +248,7 @@ class OrderService {
 ### Testing
 
 ```typescript
-import { EventBus } from '@codehola/eventbus';
+import { EventBus } from 'eventbus-inmemory';
 
 describe('EventBus Integration', () => {
   let eventBus: EventBus;

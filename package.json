@@ -1,5 +1,5 @@
 {
-  "name": "@codehola/eventbus",
+  "name": "eventbus-inmemory",
   "version": "0.1.0",
   "description": "In-memory event bus with JSON contracts",
   "main": "dist/index.js",
@@ -10,14 +10,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/codehola/eventbus.git"
+    "url": "git+https://github.com/duongtdn/eventbus-inmemory.git"
   },
   "author": "Duong Nguyen (duongtdn)",
   "license": "UNLICENSED",
   "bugs": {
-    "url": "https://github.com/codehola/eventbus/issues"
+    "url": "https://github.com/duongtdn/eventbus-inmemory/issues"
   },
-  "homepage": "https://github.com/codehola/eventbus#readme",
+  "homepage": "https://github.com/duongtdn/eventbus-inmemory#readme",
   "dependencies": {
     "@types/uuid": "^10.0.0",
     "ajv": "^8.17.1",
