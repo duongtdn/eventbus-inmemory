@@ -5,7 +5,6 @@
  * timestamp, version, and default metadata fields.
  */
 
-import { randomUUID } from 'crypto';
 import { BasicEvent, Priority } from '../types/events';
 
 /**
@@ -39,9 +38,38 @@ export class EventEnrichmentService {
 
   /**
    * Generate UUID v4 for event identification
+   * Works in both Node.js and browser environments
    */
   private generateEventId(): string {
-    return randomUUID();
+    // Browser environment - use Web Crypto API
+    if (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.randomUUID) {
+      return globalThis.crypto.randomUUID();
+    }
+
+    // Node.js environment - dynamically import crypto module
+    if (typeof require !== 'undefined') {
+      try {
+        const { randomUUID } = require('crypto');
+        return randomUUID();
+      } catch (error) {
+        // Fallback if crypto module is not available
+      }
+    }
+
+    // Fallback implementation using Math.random (less secure but functional)
+    return this.generateFallbackUUID();
+  }
+
+  /**
+   * Fallback UUID v4 implementation using Math.random
+   * Note: This is less cryptographically secure than crypto.randomUUID()
+   */
+  private generateFallbackUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   /**
